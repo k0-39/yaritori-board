@@ -1,0 +1,315 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1f5f8b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="やりとり">
+<meta name="robots" content="noindex">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>やりとりボード</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: 配車室の掲示板。上に「今日追いかける人」、下に工程ごとの列(スマホはタブ切替、PCは5列) */
+:root{
+  --paper:#f3f5f7; --sheet:#ffffff; --ink:#18242e; --mute:#5d6b76; --line:#d9e0e6;
+  --accent:#1f5f8b; --accent-ink:#ffffff; --soft:#e4edf4;
+  --warn:#b45a00; --warn-bg:#fff1df; --late:#b3261e; --late-bg:#fde8e6; --ok:#2e7d4f; --ok-bg:#e3f3e8;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11181e; --sheet:#1a232b; --ink:#e6ecf1; --mute:#93a2ad; --line:#2c3843;
+  --accent:#6fb0de; --accent-ink:#0d1a24; --soft:#203241;
+  --warn:#f0a556; --warn-bg:#3a2a17; --late:#f2857c; --late-bg:#3d1e1c; --ok:#7fcf9d; --ok-bg:#183326;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11181e; --sheet:#1a232b; --ink:#e6ecf1; --mute:#93a2ad; --line:#2c3843;
+  --accent:#6fb0de; --accent-ink:#0d1a24; --soft:#203241;
+  --warn:#f0a556; --warn-bg:#3a2a17; --late:#f2857c; --late-bg:#3d1e1c; --ok:#7fcf9d; --ok-bg:#183326;
+  color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{background:var(--paper);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:18px 96px;display:flex;flex-direction:column;gap:20px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font-size:1.55rem;font-weight:900;margin:0;letter-spacing:.02em;text-wrap:balance}
+.today{font-family:var(--f-num);color:var(--mute);font-size:.82rem}
+.hright{display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.bk{display:flex;gap:6px;flex-wrap:wrap}
+.note{font-size:.8rem;color:var(--mute);margin:2px 0 0}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn{border:0;border-radius:999px;padding:.55em 1.1em;font-weight:700;background:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+
+/* 今日追いかける */
+.follow{background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.follow h2{margin:0;font-size:1rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.count{font-family:var(--f-num);background:var(--late);color:var(--sheet);border-radius:999px;padding:0 .6em;font-size:.85rem}
+.follow ul{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.follow li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px 0;border-top:1px dashed var(--line);align-items:center}
+.follow li:first-child{border-top:0}
+.follow .who{font-weight:700;min-width:0}
+.follow .why{grid-column:1;font-size:.82rem;color:var(--mute)}
+.follow .act{grid-row:1/3;grid-column:2}
+.empty-follow{color:var(--ok);font-weight:700;font-size:.9rem;margin:0}
+
+/* 工程タブ */
+.tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+.tab{flex:1 0 auto;border:1px solid var(--line);background:var(--sheet);color:var(--ink);border-radius:8px;padding:.5em .8em;display:flex;flex-direction:column;align-items:flex-start;min-width:84px}
+.tab small{font-family:var(--f-num);color:var(--mute);font-size:.75rem}
+.tab[aria-selected="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.tab[aria-selected="true"] small{color:var(--accent-ink);opacity:.8}
+.tab .arrow{display:none}
+
+.board{display:grid;grid-template-columns:1fr;gap:14px}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}
+.col>h3{display:none}
+.col-empty{color:var(--mute);font-size:.88rem;border:1px dashed var(--line);border-radius:var(--r);padding:16px;text-align:center}
+
+.card{background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;display:flex;flex-direction:column;gap:6px;position:relative}
+.card.warn{border-left:4px solid var(--warn)}
+.card.late{border-left:4px solid var(--late)}
+.card .top{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.card .name{font-weight:700;min-width:0;overflow-wrap:anywhere}
+.card .amt{font-family:var(--f-num);font-size:.85rem;color:var(--mute);white-space:nowrap}
+.card .title{font-size:.9rem;overflow-wrap:anywhere}
+.card .memo{font-size:.8rem;color:var(--mute);overflow-wrap:anywhere}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pill{font-size:.75rem;border-radius:999px;padding:.1em .65em;font-weight:700;font-family:var(--f-body)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.late{background:var(--late-bg);color:var(--late)}
+.pill.ex{background:var(--soft);color:var(--mute)}
+.pill .d{font-family:var(--f-num)}
+.ops{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.op{border:1px solid var(--line);background:transparent;color:var(--ink);border-radius:6px;padding:.3em .7em;font-size:.82rem}
+.op.next{background:var(--soft);border-color:transparent;font-weight:700}
+.op.del{color:var(--mute);margin-left:auto}
+
+@media (min-width:900px){
+  .tabs{display:none}
+  .board{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .col[hidden]{display:flex!important}
+  .col>h3{display:flex;justify-content:space-between;margin:0;font-size:.9rem;font-weight:700;padding-bottom:6px;border-bottom:2px solid var(--ink)}
+  .col>h3 small{font-family:var(--f-num);color:var(--mute);font-weight:500}
+}
+
+/* 追加シート */
+.fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 6px 18px rgba(0,0,0,.18);padding:.8em 1.3em;font-size:1rem}
+.sheet-bg{position:fixed;inset:0;background:rgba(10,20,28,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
+.sheet{background:var(--sheet);width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:12px;max-height:92%;overflow:auto}
+@media (min-width:600px){.sheet-bg{align-items:center}.sheet{border-radius:16px}}
+.sheet h2{margin:0;font-size:1.1rem}
+label{display:flex;flex-direction:column;gap:4px;font-size:.82rem;color:var(--mute);font-weight:500}
+input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:.55em .7em;width:100%}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.sheet .btns{display:flex;gap:8px;justify-content:flex-end}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--paper);padding:.5em 1em;border-radius:999px;font-size:.85rem;z-index:20}
+.status{font-size:.78rem;color:var(--mute)}
+@media (prefers-reduced-motion:no-preference){.card{transition:transform .15s}.card:hover{transform:translateY(-1px)}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <h1>やりとりボード</h1>
+      <p class="note">予約から確定まで、お客さんが今どこにいるか</p>
+    </div>
+    <div class="hright">
+      <div class="today" id="today"></div>
+      <div class="bk">
+        <button class="op" id="exportBtn" type="button">バックアップを保存</button>
+        <button class="op" id="importBtn" type="button">バックアップから戻す</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+    </div>
+  </header>
+
+  <section class="follow" aria-labelledby="fh">
+    <h2 id="fh">今日追いかける人 <span class="count" id="fcount">0</span></h2>
+    <ul id="flist"></ul>
+  </section>
+
+  <div class="tabs" role="tablist" id="tabs"></div>
+  <div class="board" id="board"></div>
+  <p class="status" id="status">読み込み中…</p>
+</div>
+
+<button class="btn fab" id="addBtn">＋ お客さんを追加</button>
+
+<div class="sheet-bg" id="sheetBg" hidden>
+  <form class="sheet" id="form" autocomplete="off">
+    <h2 id="formTitle">お客さんを追加</h2>
+    <label>お客さん(会社・団体名)<input id="f-name" required placeholder="例：○○小学校"></label>
+    <label>内容<input id="f-title" placeholder="例：11/20 遠足 大型2台"></label>
+    <div class="row2">
+      <label>金額(円)<input id="f-amount" inputmode="numeric" placeholder="例：180000"></label>
+      <label>工程<select id="f-stage"></select></label>
+    </div>
+    <label>最後に連絡した日<input id="f-last" type="date"></label>
+    <label>メモ<textarea id="f-memo" rows="2" placeholder="例：担当は教頭先生、午後なら電話OK"></textarea></label>
+    <div class="btns">
+      <button type="button" class="btn ghost" id="cancelBtn">やめる</button>
+      <button type="submit" class="btn">保存</button>
+    </div>
+  </form>
+</div>
+
+<script>
+const STAGES=[
+  {key:"rsv",  label:"予約",       limit:2, why:"予約内容の確認がまだです"},
+  {key:"wait", label:"予約中返事待ち",   limit:3, why:"お客さんの返事が来ていません"},
+  {key:"fix",  label:"確定",       limit:7, why:"最終確認の連絡が空いています"}
+];
+const $=s=>document.querySelector(s);
+let deals=[], current=0, editingId=null, saving=false;
+
+function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function daysSince(s){if(!s)return 0;const a=new Date(s+"T00:00:00"),b=new Date(todayStr()+"T00:00:00");return Math.max(0,Math.round((b-a)/864e5))}
+function yen(n){return n?Number(n).toLocaleString("ja-JP")+"円":""}
+function level(d){const st=STAGES[d.stage]||STAGES[0],n=daysSince(d.lastContact);if(n>=st.limit*2)return"late";if(n>=st.limit)return"warn";return"ok"}
+function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+
+function toast(msg){const t=el("div","toast",msg);document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
+
+function render(){
+  $("#today").textContent=todayStr().replace(/-/g,".");
+  // 追いかける人
+  const fl=$("#flist");fl.replaceChildren();
+  const need=deals.filter(d=>level(d)!=="ok").sort((a,b)=>daysSince(b.lastContact)-daysSince(a.lastContact));
+  $("#fcount").textContent=need.length;
+  $("#fcount").hidden=need.length===0;
+  if(!need.length){fl.appendChild(el("p","empty-follow","今日追いかける人はいません"))}
+  need.forEach(d=>{
+    const li=el("li");
+    li.appendChild(el("span","who",d.name+(d.example?"(例)":"")));
+    li.appendChild(el("span","why",STAGES[d.stage].label+"・"+daysSince(d.lastContact)+"日連絡なし — "+STAGES[d.stage].why));
+    const b=el("button","op next act","連絡した");b.onclick=()=>contacted(d);li.appendChild(b);
+    fl.appendChild(li);
+  });
+  // タブ
+  const tabs=$("#tabs");tabs.replaceChildren();
+  STAGES.forEach((s,i)=>{
+    const n=deals.filter(d=>d.stage===i).length;
+    const t=el("button","tab");t.setAttribute("role","tab");t.setAttribute("aria-selected",i===current);
+    t.appendChild(el("span",null,s.label));t.appendChild(el("small",null,n+"件"));
+    t.onclick=()=>{current=i;render()};tabs.appendChild(t);
+  });
+  // 列
+  const board=$("#board");board.replaceChildren();
+  STAGES.forEach((s,i)=>{
+    const c=el("div","col");c.hidden=i!==current;
+    const items=deals.filter(d=>d.stage===i).sort((a,b)=>daysSince(b.lastContact)-daysSince(a.lastContact));
+    const h=el("h3");h.appendChild(el("span",null,s.label));h.appendChild(el("small",null,items.length+"件"));c.appendChild(h);
+    if(!items.length)c.appendChild(el("div","col-empty","ここにいるお客さんはいません"));
+    items.forEach(d=>c.appendChild(card(d)));
+    board.appendChild(c);
+  });
+}
+
+function card(d){
+  const lv=level(d),n=daysSince(d.lastContact);
+  const c=el("article","card "+(lv==="ok"?"":lv));
+  const top=el("div","top");top.appendChild(el("span","name",d.name));top.appendChild(el("span","amt",yen(d.amount)));c.appendChild(top);
+  if(d.title)c.appendChild(el("div","title",d.title));
+  const meta=el("div","meta");
+  const p=el("span","pill "+lv);
+  p.append(n===0?"今日連絡済み":"");
+  if(n>0){p.append("最終連絡から ");p.appendChild(el("span","d",String(n)));p.append(" 日")}
+  meta.appendChild(p);
+  if(d.example)meta.appendChild(el("span","pill ex","例"));
+  c.appendChild(meta);
+  if(d.memo)c.appendChild(el("div","memo",d.memo));
+  const ops=el("div","ops");
+  if(d.stage<STAGES.length-1){const nx=el("button","op next",STAGES[d.stage+1].label+"へ →");nx.onclick=()=>move(d,1);ops.appendChild(nx)}
+  else{const done=el("button","op next","運行済み・完了");done.onclick=()=>remove(d,"完了にしました");ops.appendChild(done)}
+  const ct=el("button","op","連絡した");ct.onclick=()=>contacted(d);ops.appendChild(ct);
+  if(d.stage>0){const bk=el("button","op","← 戻す");bk.onclick=()=>move(d,-1);ops.appendChild(bk)}
+  const ed=el("button","op","編集");ed.onclick=()=>openForm(d);ops.appendChild(ed);
+  c.appendChild(ops);
+  return c;
+}
+
+const KEY="yaritori-board-v1";
+function persist(){try{localStorage.setItem(KEY,JSON.stringify(deals));return true}catch(e){toast("保存できませんでした。ブラウザの設定で保存が止められていないか確認してください");return false}}
+function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");return Array.isArray(v)?v:[]}catch(e){return []}}
+function setStatus(){$("#status").textContent=deals.length?"このパソコン(スマホ)の中に自動で保存されます。ときどき「バックアップを保存」しておくと安心です。":"まだお客さんがいません。右下の「＋ お客さんを追加」から1件目を登録してください。"}
+async function write(id,data){
+  const i=deals.findIndex(x=>x.id===id);if(i>=0)deals[i]={id,...data};else deals.push({id,...data});
+  persist();setStatus();render();
+}
+function plain(d){const {id,...rest}=d;return rest}
+function move(d,dir){const stage=d.stage+dir;current=stage;write(d.id,{...plain(d),stage,lastContact:todayStr()});toast(STAGES[stage].label+"に移しました")}
+function contacted(d){write(d.id,{...plain(d),lastContact:todayStr()});toast(d.name+"：今日連絡済みにしました")}
+async function remove(d,msg){
+  deals=deals.filter(x=>x.id!==d.id);persist();setStatus();render();toast(msg)
+}
+
+// フォーム
+const sel=$("#f-stage");STAGES.forEach((s,i)=>{const o=el("option",null,s.label);o.value=i;sel.appendChild(o)});
+function openForm(d){
+  editingId=d?d.id:null;
+  $("#formTitle").textContent=d?"お客さんを編集":"お客さんを追加";
+  $("#f-name").value=d?d.name:"";$("#f-title").value=d?d.title||"":"";
+  $("#f-amount").value=d&&d.amount?d.amount:"";$("#f-stage").value=d?d.stage:0;
+  $("#f-last").value=d?d.lastContact:todayStr();$("#f-memo").value=d?d.memo||"":"";
+  let delBtn=$("#delBtn");if(delBtn)delBtn.remove();
+  if(d){delBtn=el("button","btn ghost","削除");delBtn.type="button";delBtn.id="delBtn";
+    delBtn.onclick=()=>{if(delBtn.dataset.sure){remove(d,"削除しました");closeForm()}else{delBtn.dataset.sure="1";delBtn.textContent="本当に削除"}};
+    $(".sheet .btns").prepend(delBtn)}
+  $("#sheetBg").hidden=false;$("#f-name").focus();
+}
+function closeForm(){$("#sheetBg").hidden=true}
+$("#addBtn").onclick=()=>openForm(null);
+$("#cancelBtn").onclick=closeForm;
+$("#sheetBg").addEventListener("click",e=>{if(e.target.id==="sheetBg")closeForm()});
+$("#form").addEventListener("submit",async e=>{
+  e.preventDefault();if(saving)return;saving=true;
+  const prev=editingId?deals.find(x=>x.id===editingId):null;
+  const data={name:$("#f-name").value.trim(),title:$("#f-title").value.trim(),
+    amount:Number(String($("#f-amount").value).replace(/[^\d]/g,""))||0,stage:Number($("#f-stage").value),
+    lastContact:$("#f-last").value||todayStr(),memo:$("#f-memo").value.trim(),
+    createdAt:prev?prev.createdAt:new Date().toISOString(),example:false};
+  const id=editingId||("d"+Date.now().toString(36)+Math.random().toString(36).slice(2,6));
+  closeForm();current=data.stage;
+  await write(id,data);saving=false;toast("保存しました");
+});
+
+// サンプル(保存先が使えないときだけ表示)
+function samples(){
+  const ago=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)};
+  return [
+    {id:"s1",name:"みなみ保育園",title:"11/15 芋掘り遠足 中型1台",amount:68000,stage:0,lastContact:ago(2),memo:"園長先生あて、午前中が電話つながりやすい",example:true},
+    {id:"s2",name:"桜島ゴルフ同好会",title:"12/7 霧島 大型1台",amount:0,stage:0,lastContact:ago(1),memo:"人数が40名前後で未確定",example:true},
+    {id:"s3",name:"○○中学校PTA",title:"11/22 研修旅行 大型2台",amount:236000,stage:1,lastContact:ago(5),memo:"役員会で決めると言っていた",example:true},
+    {id:"s4",name:"老人クラブ 若葉会",title:"11/3 指宿 日帰り 大型1台",amount:118000,stage:1,lastContact:ago(1),example:true},
+    {id:"s5",name:"鹿児島○○建設",title:"10/18 社員旅行 大型1台",amount:142000,stage:2,lastContact:ago(3),memo:"集合場所：本社駐車場 7:30",example:true}
+  ];
+}
+
+// バックアップ
+$("#exportBtn").onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:"やりとりボード",saved:new Date().toISOString(),deals},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="やりとりボード_"+todayStr()+".json";
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast("バックアップを保存しました");
+};
+$("#importBtn").onclick=()=>$("#importFile").click();
+$("#importFile").addEventListener("change",async e=>{
+  const f=e.target.files[0];e.target.value="";if(!f)return;
+  try{const j=JSON.parse(await f.text());const list=Array.isArray(j)?j:j.deals;
+    if(!Array.isArray(list))throw 0;
+    deals=list.filter(d=>d&&d.id&&d.name).map(d=>({...d,stage:Math.min(Math.max(Number(d.stage)||0,0),STAGES.length-1)}));
+    persist();setStatus();render();toast(deals.length+"件を読み込みました");
+  }catch(err){toast("このファイルは読み込めませんでした。やりとりボードのバックアップを選んでください")}
+});
+deals=load().map(d=>({...d,stage:Math.min(Math.max(Number(d.stage)||0,0),STAGES.length-1)}));
+setStatus();render();
+if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
+</script>
