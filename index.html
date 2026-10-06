@@ -100,6 +100,36 @@ button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-vis
   .col>h3 small{font-family:var(--f-num);color:var(--mute);font-weight:500}
 }
 
+/* 表示切替 */
+.views{display:inline-flex;background:var(--sheet);border:1px solid var(--line);border-radius:999px;padding:3px;gap:3px;align-self:flex-start}
+.view{border:0;background:transparent;color:var(--ink);border-radius:999px;padding:.4em 1.2em;font-weight:700}
+.view[aria-selected="true"]{background:var(--ink);color:var(--paper)}
+.trip{display:flex;gap:8px;align-items:center;font-size:.85rem}
+.trip .d{font-family:var(--f-num);font-weight:600}
+.soon{font-size:.72rem;font-weight:700;color:var(--accent);border:1px solid var(--accent);border-radius:999px;padding:0 .55em}
+/* カレンダー */
+.cal{background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:10px}
+.cal-head{display:flex;justify-content:space-between;align-items:center}
+.cal-head h2{margin:0;font-size:1.1rem;font-family:var(--f-num);font-weight:600}
+.legend{display:flex;gap:14px;font-size:.75rem;color:var(--mute)}
+.legend span{display:flex;align-items:center;gap:5px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%}
+.dot.fix{background:var(--accent)}
+.dot.tent{background:transparent;border:1.5px solid var(--warn)}
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.wd{font-size:.72rem;text-align:center;color:var(--mute);padding:2px 0}
+.wd.sun,.cell.sun .n{color:var(--late)} .wd.sat,.cell.sat .n{color:var(--accent)}
+.cell{border:0;background:var(--paper);color:var(--ink);border-radius:6px;min-height:52px;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.cell.out{opacity:.35}
+.cell.today{outline:2px solid var(--ink);outline-offset:-2px}
+.cell[aria-pressed="true"]{background:var(--soft)}
+.cell .n{font-family:var(--f-num);font-size:.8rem}
+.cell .dots{display:flex;gap:2px;flex-wrap:wrap;justify-content:center;max-width:100%}
+.cell .bus{font-family:var(--f-num);font-size:.68rem;color:var(--mute)}
+.day{display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.day h3{margin:0;font-size:.95rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.day-empty{color:var(--mute);font-size:.88rem;margin:0}
+.nodate{font-size:.8rem;color:var(--mute)}
 /* 追加シート */
 .fab{position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));box-shadow:0 6px 18px rgba(0,0,0,.18);padding:.8em 1.3em;font-size:1rem}
 .sheet-bg{position:fixed;inset:0;background:rgba(10,20,28,.45);display:flex;align-items:flex-end;justify-content:center;z-index:10}
@@ -136,6 +166,20 @@ input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:va
     <ul id="flist"></ul>
   </section>
 
+  <div class="views" role="tablist">
+    <button class="view" id="vBoard" role="tab" aria-selected="true">ボード</button>
+    <button class="view" id="vCal" role="tab" aria-selected="false">カレンダー</button>
+  </div>
+  <section class="cal" id="cal" hidden>
+    <div class="cal-head">
+      <button class="op" id="prevM" aria-label="前の月">←</button>
+      <h2 id="calTitle"></h2>
+      <button class="op" id="nextM" aria-label="次の月">→</button>
+    </div>
+    <div class="legend"><span><i class="dot fix"></i>確定</span><span><i class="dot tent"></i>予約・返事待ち</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="day" id="day"></div>
+  </section>
   <div class="tabs" role="tablist" id="tabs"></div>
   <div class="board" id="board"></div>
   <p class="status" id="status">読み込み中…</p>
@@ -147,7 +191,11 @@ input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:va
   <form class="sheet" id="form" autocomplete="off">
     <h2 id="formTitle">お客さんを追加</h2>
     <label>お客さん(会社・団体名)<input id="f-name" required placeholder="例：○○小学校"></label>
-    <label>内容<input id="f-title" placeholder="例：11/20 遠足 大型2台"></label>
+    <div class="row2">
+      <label>運行日<input id="f-date" type="date"></label>
+      <label>帰着日(泊まりの時)<input id="f-end" type="date"></label>
+    </div>
+    <label>内容<input id="f-title" placeholder="例：遠足 大型2台"></label>
     <div class="row2">
       <label>金額(円)<input id="f-amount" inputmode="numeric" placeholder="例：180000"></label>
       <label>工程<select id="f-stage"></select></label>
@@ -174,11 +222,48 @@ function todayStr(){const d=new Date();return d.getFullYear()+"-"+String(d.getMo
 function daysSince(s){if(!s)return 0;const a=new Date(s+"T00:00:00"),b=new Date(todayStr()+"T00:00:00");return Math.max(0,Math.round((b-a)/864e5))}
 function yen(n){return n?Number(n).toLocaleString("ja-JP")+"円":""}
 function level(d){const st=STAGES[d.stage]||STAGES[0],n=daysSince(d.lastContact);if(n>=st.limit*2)return"late";if(n>=st.limit)return"warn";return"ok"}
+let view="board",calY=new Date().getFullYear(),calM=new Date().getMonth(),selDay=todayStr(),pendingDate=null;
+function daysUntil(s){const a=new Date(todayStr()+"T00:00:00"),b=new Date(s+"T00:00:00");return Math.round((b-a)/864e5)}
+const WD=["日","月","火","水","木","金","土"];
+function md(s){const d=new Date(s+"T00:00:00");return (d.getMonth()+1)+"/"+d.getDate()+"("+WD[d.getDay()]+")"}
+function fmtTrip(d){return d.endDate?md(d.tripDate)+"〜"+md(d.endDate):md(d.tripDate)}
+function ymd(y,m,dd){return y+"-"+String(m+1).padStart(2,"0")+"-"+String(dd).padStart(2,"0")}
+function onDay(d,s){return d.tripDate&&d.tripDate<=s&&(d.endDate||d.tripDate)>=s}
+function busCount(d){const m=String(d.title||"").match(/(\d+)\s*台/g);return m?m.reduce((a,x)=>a+parseInt(x),0):0}
+function renderCal(){
+  $("#calTitle").textContent=calY+"年"+(calM+1)+"月";
+  const g=$("#grid");g.replaceChildren();
+  WD.forEach((w,i)=>g.appendChild(el("div","wd"+(i===0?" sun":i===6?" sat":""),w)));
+  const first=new Date(calY,calM,1),start=new Date(calY,calM,1-first.getDay());
+  for(let i=0;i<42;i++){
+    const dt=new Date(start.getFullYear(),start.getMonth(),start.getDate()+i);
+    if(i>=35&&dt.getMonth()!==calM)break;
+    const s=ymd(dt.getFullYear(),dt.getMonth(),dt.getDate());
+    const items=deals.filter(d=>onDay(d,s));
+    const b=el("button","cell"+(dt.getMonth()!==calM?" out":"")+(s===todayStr()?" today":"")+(dt.getDay()===0?" sun":dt.getDay()===6?" sat":""));
+    b.setAttribute("aria-pressed",s===selDay);b.setAttribute("aria-label",md(s)+" "+items.length+"件");
+    b.appendChild(el("span","n",String(dt.getDate())));
+    const dots=el("span","dots");items.slice(0,4).forEach(d=>dots.appendChild(el("i","dot "+(d.stage===STAGES.length-1?"fix":"tent"))));b.appendChild(dots);
+    const bus=items.reduce((a,d)=>a+busCount(d),0);if(bus)b.appendChild(el("span","bus",bus+"台"));
+    b.onclick=()=>{selDay=s;renderCal()};g.appendChild(b);
+  }
+  const box=$("#day");box.replaceChildren();
+  const h=el("h3");h.appendChild(el("span",null,md(selDay)+"の運行"));
+  const add=el("button","op next","＋ この日に追加");add.onclick=()=>{pendingDate=selDay;openForm(null)};h.appendChild(add);box.appendChild(h);
+  const list=deals.filter(d=>onDay(d,selDay)).sort((a,b)=>b.stage-a.stage);
+  if(!list.length)box.appendChild(el("p","day-empty","この日の予約はありません"));
+  list.forEach(d=>box.appendChild(card(d)));
+  const nd=deals.filter(d=>!d.tripDate).length;
+  if(nd)box.appendChild(el("p","nodate","運行日が入っていないお客さんが"+nd+"件あります。編集から運行日を入れるとカレンダーに出ます。"));
+}
+function setView(v){view=v;$("#vBoard").setAttribute("aria-selected",v==="board");$("#vCal").setAttribute("aria-selected",v==="cal");
+  $("#cal").hidden=v!=="cal";$("#tabs").hidden=v==="cal";$("#board").hidden=v==="cal";try{localStorage.setItem("yaritori-view",v)}catch(e){}render()}
 function el(tag,cls,txt){const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
 
 function toast(msg){const t=el("div","toast",msg);document.body.appendChild(t);setTimeout(()=>t.remove(),1800)}
 
 function render(){
+  if(view==="cal")renderCal();
   $("#today").textContent=todayStr().replace(/-/g,".");
   // 追いかける人
   const fl=$("#flist");fl.replaceChildren();
@@ -217,6 +302,7 @@ function card(d){
   const lv=level(d),n=daysSince(d.lastContact);
   const c=el("article","card "+(lv==="ok"?"":lv));
   const top=el("div","top");top.appendChild(el("span","name",d.name));top.appendChild(el("span","amt",yen(d.amount)));c.appendChild(top);
+  if(d.tripDate){const t=el("div","trip");t.appendChild(el("span","d",fmtTrip(d)));const left=daysUntil(d.tripDate);if(left>=0&&left<=7)t.appendChild(el("span","soon",left===0?"今日":"あと"+left+"日"));c.appendChild(t)}
   if(d.title)c.appendChild(el("div","title",d.title));
   const meta=el("div","meta");
   const p=el("span","pill "+lv);
@@ -242,7 +328,7 @@ function load(){try{const v=JSON.parse(localStorage.getItem(KEY)||"[]");return A
 function setStatus(){$("#status").textContent=deals.length?"このパソコン(スマホ)の中に自動で保存されます。ときどき「バックアップを保存」しておくと安心です。":"まだお客さんがいません。右下の「＋ お客さんを追加」から1件目を登録してください。"}
 async function write(id,data){
   const i=deals.findIndex(x=>x.id===id);if(i>=0)deals[i]={id,...data};else deals.push({id,...data});
-  persist();setStatus();render();
+  persist();setStatus();setView(view);
 }
 function plain(d){const {id,...rest}=d;return rest}
 function move(d,dir){const stage=d.stage+dir;current=stage;write(d.id,{...plain(d),stage,lastContact:todayStr()});toast(STAGES[stage].label+"に移しました")}
@@ -256,7 +342,7 @@ const sel=$("#f-stage");STAGES.forEach((s,i)=>{const o=el("option",null,s.label)
 function openForm(d){
   editingId=d?d.id:null;
   $("#formTitle").textContent=d?"お客さんを編集":"お客さんを追加";
-  $("#f-name").value=d?d.name:"";$("#f-title").value=d?d.title||"":"";
+  $("#f-name").value=d?d.name:"";$("#f-date").value=d?d.tripDate||"":(pendingDate||"");$("#f-end").value=d?d.endDate||"":"";pendingDate=null;$("#f-title").value=d?d.title||"":"";
   $("#f-amount").value=d&&d.amount?d.amount:"";$("#f-stage").value=d?d.stage:0;
   $("#f-last").value=d?d.lastContact:todayStr();$("#f-memo").value=d?d.memo||"":"";
   let delBtn=$("#delBtn");if(delBtn)delBtn.remove();
@@ -272,7 +358,8 @@ $("#sheetBg").addEventListener("click",e=>{if(e.target.id==="sheetBg")closeForm(
 $("#form").addEventListener("submit",async e=>{
   e.preventDefault();if(saving)return;saving=true;
   const prev=editingId?deals.find(x=>x.id===editingId):null;
-  const data={name:$("#f-name").value.trim(),title:$("#f-title").value.trim(),
+  const _sd=$("#f-date").value,_ed=$("#f-end").value;
+  const data={name:$("#f-name").value.trim(),tripDate:_sd,endDate:(_ed&&_sd&&_ed>_sd)?_ed:"",title:$("#f-title").value.trim(),
     amount:Number(String($("#f-amount").value).replace(/[^\d]/g,""))||0,stage:Number($("#f-stage").value),
     lastContact:$("#f-last").value||todayStr(),memo:$("#f-memo").value.trim(),
     createdAt:prev?prev.createdAt:new Date().toISOString(),example:false};
@@ -308,6 +395,10 @@ $("#importFile").addEventListener("change",async e=>{
     persist();setStatus();render();toast(deals.length+"件を読み込みました");
   }catch(err){toast("このファイルは読み込めませんでした。やりとりボードのバックアップを選んでください")}
 });
+$("#vBoard").onclick=()=>setView("board");$("#vCal").onclick=()=>setView("cal");
+$("#prevM").onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal()};
+$("#nextM").onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal()};
+try{if(localStorage.getItem("yaritori-view")==="cal")view="cal"}catch(e){}
 deals=load().map(d=>({...d,stage:Math.min(Math.max(Number(d.stage)||0,0),STAGES.length-1)}));
 setStatus();render();
 if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{})}
