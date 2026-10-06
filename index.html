@@ -3,11 +3,11 @@
 <meta name="theme-color" content="#1f5f8b">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="やりとり">
+<meta name="apple-mobile-web-app-title" content="ダンドルくん">
 <meta name="robots" content="noindex">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>やりとりボード</title>
+<title>ダンドルくん</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
 <style>
@@ -148,7 +148,7 @@ input,select,textarea{font:inherit;font-size:16px;color:var(--ink);background:va
 <div class="wrap">
   <header>
     <div>
-      <h1>やりとりボード</h1>
+      <h1>ダンドルくん</h1>
       <p class="note">予約から確定まで、お客さんが今どこにいるか</p>
     </div>
     <div class="hright">
@@ -382,8 +382,8 @@ function samples(){
 
 // バックアップ
 $("#exportBtn").onclick=()=>{
-  const blob=new Blob([JSON.stringify({app:"やりとりボード",saved:new Date().toISOString(),deals},null,2)],{type:"application/json"});
-  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="やりとりボード_"+todayStr()+".json";
+  const blob=new Blob([JSON.stringify({app:"ダンドルくん",saved:new Date().toISOString(),deals},null,2)],{type:"application/json"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="ダンドルくん_"+todayStr()+".json";
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);toast("バックアップを保存しました");
 };
 $("#importBtn").onclick=()=>$("#importFile").click();
@@ -393,7 +393,7 @@ $("#importFile").addEventListener("change",async e=>{
     if(!Array.isArray(list))throw 0;
     deals=list.filter(d=>d&&d.id&&d.name).map(d=>({...d,stage:Math.min(Math.max(Number(d.stage)||0,0),STAGES.length-1)}));
     persist();setStatus();render();toast(deals.length+"件を読み込みました");
-  }catch(err){toast("このファイルは読み込めませんでした。やりとりボードのバックアップを選んでください")}
+  }catch(err){toast("このファイルは読み込めませんでした。ダンドルくんのバックアップを選んでください")}
 });
 $("#vBoard").onclick=()=>setView("board");$("#vCal").onclick=()=>setView("cal");
 $("#prevM").onclick=()=>{calM--;if(calM<0){calM=11;calY--}renderCal()};

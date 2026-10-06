@@ -1,6 +1,6 @@
 {
-  "name": "やりとりボード",
-  "short_name": "やりとり",
+  "name": "ダンドルくん",
+  "short_name": "ダンドルくん",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
