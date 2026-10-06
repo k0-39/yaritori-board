@@ -401,6 +401,6 @@ $("#nextM").onclick=()=>{calM++;if(calM>11){calM=0;calY++}renderCal()};
 try{if(localStorage.getItem("yaritori-view")==="cal")view="cal"}catch(e){}
 deals=load().map(d=>({...d,stage:Math.min(Math.max(Number(d.stage)||0,0),STAGES.length-1)}));
 setStatus();render();
-if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+if("serviceWorker" in navigator&&location.protocol.startsWith("http")){navigator.serviceWorker.register("sw.js",{updateViaCache:"none"}).catch(()=>{})}
 try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist()}catch(e){}
 </script>
